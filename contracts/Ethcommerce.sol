@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-// create a new smart contract
+// Main contract for ecommerce platform
 contract Ethcommerce {
-    // declare address var 4 owner of the project
+    // declare address var 4 owner of the contract
     address public owner;
       
-    // create a struct to define all props for ea. store product
+    // Define the structure for products/items in the store
     struct Item {
         uint256 id;
         string name;
@@ -17,22 +17,24 @@ contract Ethcommerce {
         uint256 stock;
     }
 
-    // store products inside the smart contract 
+    // store products inside the smart contract: Maps items ID to Item struct
     mapping(uint256 => Item) public items; 
-    // mapping to store all orders
+    // mapping to store orders: map user address to their order history 
     mapping(address => mapping(uint256 => Order)) public orders;
-    //mapping to keep track of all orders 
+    //mapping to track number of orders per user address
     mapping(address => uint256) public orderCount; 
 
-     // emitted every time a product is brought
+     // emitted every time a purchase is made
+     // Helps frontend track purchases and update UI
     event Buy(address buyer, uint256 orderId, uint256 itemId);
 
-      //struct for orders
+      //structure to store order details
     struct Order {
-        uint256 time;
-        Item item;
+        uint256 time; //order timestamp
+        Item item; //item that was purchased
     }
-    // once a product has been listed successfully 
+    // event emitted when a new product is listed 
+    //helps the frontend track new items and update inventory 
     event List(string name, uint256 cost, uint256 quantity);
 
     //create a modifier ensure owner can only list items in the store
@@ -40,13 +42,15 @@ contract Ethcommerce {
         require((msg.sender == owner));
         _;
     }
-
+    // constructor runs once when contract is deployed 
+    // sets the deployers address as the owner
       constructor() {
             owner = msg.sender;
         }
 
-     //LISTING PRODUCTS
+     //-----LISTING PRODUCTS
     //Create a new product item and add it to the mapping of items
+    //only the owner can call this fx (enforced by onlyOwner mod)
     function list(
        uint256 _id,
         string memory _name,
@@ -56,43 +60,45 @@ contract Ethcommerce {
         uint256 _rating,
         uint256 _stock
     ) public onlyOwner {
-        //Create item 
+        //create a new item with the provicded parameters
         Item memory item = Item(
             _id, _name, _category, _image, _cost, _rating, _stock
         );
-        // Add item to mapping
+        // store the item in the items mapping using its ID
         items[_id] = item;
-        //emit event
+        //emit event to notidfy frontend of new listing 
         emit List(_name, _cost, _stock);
     }
 
-    // BUYING PRODUCTS 
+    //----BUYING PRODUCTS: Fx for users to purchase items
+    //must send enough ETH with the transaction
     function buy(uint256 _id) public payable {
-        //fetch item using id from the mapping of items
+        //fetch item using id from the mapping of items storage
         Item memory item =items[_id];
 
-        //require enough ethr to buy item
+        //check if user sent enough eth to cover item cost
         require((msg.value >= item.cost));
 
-        //require the item to be in stock 
+        //verify item is available in stock
         require(item.stock >0);
 
-        //create order
+        //create order with current timestamp and item details
         Order memory order = Order(block.timestamp, item);
 
         //add order for user 
         orderCount[msg.sender]++; // Order ID
+        // store the order in the orders mapping
         orders[msg.sender][orderCount[msg.sender]] = order;
 
         //subtract from stock
         items[_id].stock = item.stock - 1; 
 
-        //emit event to indicstr a successful purchase
+        //emit event to indicstr a successful purchase for frontend
         emit Buy(msg.sender, orderCount[msg.sender], item.id);
 
     }
 
-    //WITHDRAWING
+    //---WITHDRAWING: Fx for owner to withdraw accumulated eth from sales
     function withdraw() public onlyOwner{
         (bool success, ) = owner.call{value: address(this).balance}("");
         require((success));
