@@ -25,22 +25,19 @@ function App() {
 
   const loadBlockchainData = async () => {
     try {
-      // Check for MetaMask
-      if (!window.ethereum) {
-        throw new Error("Please install MetaMask");
-      }
+       // Initialize provider
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    setProvider(provider);
 
-      // Initialize provider
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      setProvider(provider);
+    // Get network
+    const network = await provider.getNetwork();
+    console.log("Current Network ID:", network.chainId); // Debug log
 
-      // Get network
-      const network = await provider.getNetwork();
-      
-      // Verify network configuration exists
-      if (!config[network.chainId]) {
-        throw new Error(`Network ${network.chainId} not supported`);
-      }
+    // Check for correct network (Hardhat)
+    if (network.chainId !== 31337) {
+      alert("Please switch to the Hardhat network in MetaMask");
+      return;
+    }
 
       // Initialize contract
       const loadedEthcommerce = new ethers.Contract(
@@ -96,6 +93,11 @@ function App() {
     };
   }, []);
 
+  console.log("electronics:", electronics);
+console.log("clothing:", clothing);
+console.log("toys:", toys);
+
+
   return (
     <div>
       <Navigation account={account} setAccount={setAccount} />
@@ -119,6 +121,8 @@ function App() {
             togglePop={togglePop} 
           />
         </>
+
+        
       )}
 
       {toggle && (
